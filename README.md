@@ -37,24 +37,48 @@ npx quartz create
 
 2. 添加示例内容 (方便查看是否成功)
 
-从这里开始,一切行为都在clone的quartz项目所在路径下进行
+在clone的quartz项目所在路径下:
 
 ```bash
+# 在clone的quartz项目所在路径下
 echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 ```
 
-3. 安装使用AnyBlock **(开发中)**
+1. 安装使用AnyBlock **(开发中)**
 
 就像使用普通的 remark 插件那样使用
 
-3.1. 安装依赖
+3.1. 安装依赖 (临时, 后续会有 remark 版本的 any-block 包)
+
+```bash
+npm install markdown-it-any-block@latest
+npm install markdown-it
+npm install rehype-stringify
+# # 保留 /ABConverter
+# # 将 /plugins/transgormers/ 复制到 /quartz/quartz/plugins/transgormers/
+```
 
 3.2. 启用插件
 
+quartz.config.ts
+
+```js
+import { RocketHeading } from "./quartz/plugins/transformers/rocketHeading" // [!code ++]
+
+const config: QuartzConfig = {
+  plugins: {
+    transformers: [
+      RocketHeading(), // [!code ++]
+    ],
+  },
+}
+```
+
 3.3. 启用样式文件
 
-4. 检查
+1. 检查
 
 ```bash
+# 在clone的quartz项目所在路径下
 npx quartz build --serve
 ```
