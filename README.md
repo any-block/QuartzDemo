@@ -51,9 +51,12 @@ echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 3.1. 安装依赖 (临时, 后续会有 remark 版本的 any-block 包)
 
 ```bash
-npm install markdown-it-any-block@latest
+npm install @anyblock/remark-any-block@beta
 npm install markdown-it
-npm install rehype-stringify
+
+# 旧
+# npm install markdown-it-any-block@latest
+# npm install rehype-stringify
 # # 保留 /ABConverter
 # # 将 /plugins/transgormers/ 复制到 /quartz/quartz/plugins/transgormers/
 ```
@@ -75,6 +78,19 @@ const config: QuartzConfig = {
 ```
 
 3.3. 启用样式文件
+
+quartz/styles/custom.scss
+
+添加 `@import '../node_modules/@anyblock/remark-any-block/styles';`
+
+> [!WARNING]
+> 
+> 注意，构建出来的只有对应的dom结构，而没有样式。因为纯markdown-it插件是不含样式的（除非用内联样式），自己引用一下就好
+> 
+> 例如vuepress中可以创建/修改 `src/.vuepress/styles/index.scss`
+> 并添加: `@import '../../../node_modules/markdown-it-any-block/styles';`
+> 
+> 例如vitepress可以添加 [theme](https://github.com/any-block/VitePressDemo/blob/main/.vitepress/theme) 文件夹及里面的内容
 
 1. 检查
 

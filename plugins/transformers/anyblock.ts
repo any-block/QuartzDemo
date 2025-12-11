@@ -1,41 +1,23 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkRehype from 'remark-rehype';
-import rehypeStringify from 'rehype-stringify';
-
 import { Plugin } from "unified"
 import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
-import type { VFile } from "vfile"
 import { toMarkdown } from "mdast-util-to-markdown"
 // import { remove } from "unist-util-remove"
-import { ABConvertManager } from "../../../../ABConverter/ABConvertManager"
-import { ABCSetting, ABReg } from "../../../../ABConverter/ABReg"
+
 import { type QuartzTransformerPlugin } from "../types"
-import { type BuildCtx } from "../../util/ctx"
-import { visit } from "unist-util-visit"
 
-import MarkdownIt from "markdown-it"
-const md = new MarkdownIt({
-  html: true, // 启用 HTML 标签解析
-  breaks: true // 将换行符转换为 <br> 标签
-})
-
-import { jsdom_init, ab_mdit } from "markdown-it-any-block"
+// AnyBlock
+import { ABReg } from "../../../../ABConverter/ABReg"
+import {
+  jsdom_init,
+  transformer_anyblock as ab_1,
+ } from "@anyblock/remark-any-block"
 jsdom_init()
-console.log('ensure load ab_mdit', typeof ab_mdit, ABConvertManager.getInstance().list_abConvert.length)
-
-import "../../../../ABConverter/converter/abc_text"
 
 /**
  * 大部分选项是为了与 markdown-it 版本保持一致而保留的。
  * 目前这些选项未被使用，但已预留用于未来的行为切换。
  */
 export interface AnyBlockOptions {
-  // multiline: boolean;
-  // rowspan: boolean;
-  // headerless: boolean;
-  // multibody: boolean;
-  // autolabel: boolean;
 }
 
 /**
@@ -169,76 +151,22 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
     (tree as Root).children = out;
   }
 
-// 渲染 anyblock 代码块
-const remark_anyblock_render_codeblock = () => {
-  return (tree: Root, _file: VFile) => {
-    visit(tree, "code", (node: Code, index: number|undefined, parent) => { // 遍历所有的 code 类型节点
-      console.log("\nanyblock codeblock transformer visit:", node)
-      if (node.lang != "anyblock") return
-      if (!parent || !index) return
-
-      const lines = node.value.split("\n")
-      const head = lines.shift()
-      const headerMatch = head?.match(/\[(.*)\]/)
-      if (!headerMatch) return
-
-      const header = headerMatch[1];
-      const content = lines.join("\n").trimStart();
-      const markup = (node.data as any)?.markup ?? ""
-
-      const el: HTMLDivElement = document.createElement("div");
-      el.classList.add("ab-note", "drop-shadow");
-      ABConvertManager.autoABConvert(el, header, content, markup.startsWith(":::") ? "mdit" : "");
-
-      // new node
-      console.log("\nanyblock codeblock transformer visit2:", header, 'c==', content)
-      console.log("\nanyblock codeblock transformer visit3:", el.outerHTML, el)
-      const new_node: Html = {
-        type: 'html',
-        value: el.outerHTML,
-      }
-      parent.children.splice(index, 1, new_node)
-      // return 'skip'
-    })
-  }
-}
-
-{
-  // 定义环境条件
-  ABCSetting.env = "markdown-it"; // remark
-
-  // 定义默认渲染行为 // [!code hl] risk 同步适配异步，可能会存在问题
-  ABConvertManager.getInstance().redefine_renderMarkdown((markdown: string, el: HTMLElement):void => {
-    el.classList.add("markdown-rendered")
-    // el.textContent = markdown.replace('\n', '<br>'); return; // TODO 临时
-
-    // 只能阻塞
-    // const file = unified()
-    //   .use(remarkParse)
-    //   .use(remarkRehype)
-    //   .use(rehypeStringify);
-    // const file2: VFile = await file.process(markdown);
-    // const result: string = String(file);
-
-    const result = md.render(markdown);
-
-    // console.log('re-renderMarkdown:', markdown, '===>', result)
-    const el_child = document.createElement("div"); el.appendChild(el_child); el_child.innerHTML = result;
-  })
-}
-
 // 这是 Quartz 的 Transformer 插件定义
-export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) => {
-  return {
-    name: "AnyBlock",
-    markdownPlugins(_ctx: BuildCtx) {
-      return [
-        // remark_anyblock_to_codeblock,
-        remark_anyblock_render_codeblock, // last
-      ]
-    },
-    htmlPlugins(_ctx: BuildCtx) {
-      return []
-    }
-  }
-}
+export const transformer_anyblock: QuartzTransformerPlugin = ab_1
+// export const transformer_anyblock: QuartzTransformerPlugin =
+// (/*options: any*/) => {
+//   return {
+//     name: "AnyBlock",
+//     markdownPlugins(_ctx: BuildCtx) {
+//       return [
+//         // remark_anyblock_to_codeblock,
+//         // remark_anyblock_render_codeblock, // last
+
+//         // ab_3(), // last
+//       ]
+//     },
+//     htmlPlugins(_ctx: BuildCtx) {
+//       return []
+//     }
+//   }
+// }
