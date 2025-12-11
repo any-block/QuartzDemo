@@ -1,6 +1,9 @@
 import { Plugin } from "unified"
 import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
-import { toMarkdown } from "mdast-util-to-markdown"
+import { toMarkdown } from "mdast-util-to-markdown" // TODO 这里好像会有 document 依赖
+  // 而且不一定能反序列化成功 (有私有节点类型，甚至table类型都不能识别)
+  // 后期需要去除此 "修改树" 的 `transformer` / `mdast-util` 插件
+  // 修改成 `micromarkExtensions` 形式的插件
 
 import { type QuartzTransformerPlugin } from "../types"
 import { type BuildCtx } from "../../util/ctx"
@@ -40,6 +43,7 @@ function matchAbHeader(node: RootContent): string | null {
 /**
  * 检测 `:::container` 首段落
  * 匹配时返回 `{flag, type}`
+ * 也可用 import remarkDirective from 'remark-directive'; 来代替之
  */
 function matchContainerStart(node: RootContent):
   | { flag: string; type: string }
@@ -99,8 +103,8 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
         node_next.type === "list" ||
         node_next.type === "heading" ||
         node_next.type === "code" ||
-        node_next.type === "blockquote" ||
-        node_next.type === "table"
+        node_next.type === "blockquote"
+        // node_next.type === "table"
       ) {
         const codeValue = `[${header}]\n${nodesToMarkdown([node_next])}`;
         out.push({
@@ -154,6 +158,7 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
 export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) => {
   return {
     name: "AnyBlock",
+
     markdownPlugins(_ctx: BuildCtx) {
       return [
         remark_anyblock_to_codeblock,
@@ -164,6 +169,8 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
     },
     htmlPlugins(_ctx: BuildCtx) {
       return []
-    }
+    },
+    // textTransform?: (ctx: BuildCtx, src: string) => string,
+    // externalResources?: ExternalResourcesFn,
   }
 }
