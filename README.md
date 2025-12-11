@@ -14,7 +14,7 @@
 node -v     # >= v22
 npm -v      # >=10.9.2
 
-git clone https://github.com/jackyzha0/quartz.git
+git clone https://github.com/jackyzha0/quartz.git # 官方文档是这样写的，但我推荐先去仓库  use this template 再去 clone 创建的新仓库，以去除git历史
 cd quartz
 npm i
 npx quartz create
@@ -24,14 +24,15 @@ npx quartz create
 
 1.2. 清空不必要的内容 (可选)
 
-我认为文档中的做法比较原始和笨重，带来了很多不需要的历史包袱和文件。
-如: git 历史、quartz 文档等，而且也不太利于后续更新该库
-
-我认为应该像 vuepress/vitepress 等更成熟的SSG框架学习。
-如: 使用 npm 管理项目的版本、使用 `npm create` (脚手架/模板仓库) 的方式来变更
-
-当然直接整个clone的好处是该项目的任何部分都可以很方便地修改 (在vuepress中这种需求使用的是 "别名替换" 功能);
-但这样不利于后续更新，且大多数人只需要插件系统就可以了。总的来说使用 clone 方式弊大于利
+> [!note]
+> 我认为文档中的做法比较原始和笨重，带来了很多不需要的历史包袱和文件。
+> 如: git 历史、quartz 文档等，而且也不太利于后续更新该库
+> 
+> 我认为应该像 vuepress/vitepress 等更成熟的SSG框架学习。
+> 如: 使用 npm 管理项目的版本、使用 `npm create` (脚手架/模板仓库) 的方式来变更
+> 
+> 当然直接整个clone的好处是该项目的任何部分都可以很方便地修改 (在vuepress中这种需求使用的是 "别名替换" 功能);
+> 但这样不利于后续更新，且大多数人只需要插件系统就可以了。总的来说使用 clone 方式弊大于利
 
 推荐删除: `docs/`、`.git/`
 
@@ -79,9 +80,17 @@ const config: QuartzConfig = {
 
 3.3. 启用样式文件
 
-quartz/styles/custom.scss
+quartz/styles/custom.scss 添加:
 
-添加 `@import '../node_modules/@anyblock/remark-any-block/styles';`
+```scss
+@import '../node_modules/@anyblock/remark-any-block/styles';
+
+// 适配 Quartz 和 anyblock 样式
+.ab-note > .table-container > table {
+    margin-left: 0;
+    margin-right: 0;
+}
+```
 
 > [!WARNING]
 > 
