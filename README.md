@@ -62,8 +62,9 @@ echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 3.1. 安装依赖 (临时, 后续会有 remark 版本的 any-block 包)
 
 ```bash
-npm install @anyblock/remark-any-block@beta
-npm install markdown-it
+npm install @anyblock/remark-any-block
+# 后续如果编译时发现有依赖丢失再补充 npm install
+# npm install markdown-it
 
 # 旧
 # npm install markdown-it-any-block@latest
@@ -77,12 +78,14 @@ npm install markdown-it
 quartz.config.ts
 
 ```js
-import { RocketHeading } from "./quartz/plugins/transformers/rocketHeading" // [!code ++]
+// import { RocketHeading } from "./quartz/plugins/transformers/rocketHeading" // [!code ++]
+import { transformer_anyblock } from "./quartz/plugins/transformers/anyblock"
 
 const config: QuartzConfig = {
   plugins: {
     transformers: [
-      RocketHeading(), // [!code ++]
+      // RocketHeading(), // [!code ++]
+      transformer_anyblock(), // [!code ++]
     ],
   },
 }
@@ -99,6 +102,9 @@ quartz/styles/custom.scss 添加:
 .ab-note > .table-container > table {
     margin-left: 0;
     margin-right: 0;
+}
+.ab-note {
+    margin: 10px 0;
 }
 ```
 

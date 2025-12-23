@@ -8,7 +8,10 @@ import { type FilePath } from "../../util/path"
 import { type Plugin, type Processor, unified } from "unified"
 import remarkParse from "remark-parse"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import remarkBreaks from "remark-breaks"
 import remarkRehype from 'remark-rehype'
+
 import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
 import rehypeStringify from 'rehype-stringify'
 import { toMarkdown } from "mdast-util-to-markdown" // TODO 这里好像会有 document 依赖
@@ -175,25 +178,29 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
   return {
     name: "AnyBlock",
 
-    markdownPlugins(ctx: BuildCtx) { // 一般只初始化一次，但 createMdProcessor 也会重新触发之 (注意避免递归触发)
-
-      console.log('---------------- init transformer_anyblock', ctx.allFiles)
+    markdownPlugins(_ctx: BuildCtx) { // 一般只初始化一次，但 createMdProcessor 也会重新触发之 (注意避免递归触发)
       if (processor === undefined) {
         // processor
-        processor = 'flag' // 要先给 'flag'，避免下一步递归
-        // 尝试复用 processor，复用已经配置好了的插件，避免插件效果丢失
-        // 但注意: 这里返回的只是 Markdown 阶段 的处理器（Remark 处理器），而非全流程的处理器
-        // 还需要手动给这个 processor 补全 后半截流程
-        const baseProcessor = createMdProcessor(ctx)
-        // 关键修复: 补全 "Markdown -> HTML" 的转换桥梁
-        // allowDangerousHtml: true 允许 markdown 中内嵌的 html 标签不被转义
-        baseProcessor.use(remarkRehype, { allowDangerousHtml: true })
-        // 关键修复: 确保 processor 有 Compiler (Stringify)，否则 .process() 会报错
-        // 如果 baseProcessor 已经包含了 stringify，这一步可能多余，但加上通常无害(或覆盖)
-        // 也可以检查 baseProcessor.Compiler 是否存在
-        baseProcessor.use(rehypeStringify)        
-        processor = baseProcessor
-        processor = unified().use(remarkParse).use(remarkGfm).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeStringify) // or
+        // processor = 'flag' // 要先给 'flag'，避免下一步递归
+        // // 尝试复用 processor，复用已经配置好了的插件，避免插件效果丢失
+        // // 但注意: 这里返回的只是 Markdown 阶段 的处理器（Remark 处理器），而非全流程的处理器
+        // // 还需要手动给这个 processor 补全 后半截流程
+        // const baseProcessor = createMdProcessor(ctx)
+        // // 关键修复: 补全 "Markdown -> HTML" 的转换桥梁
+        // // allowDangerousHtml: true 允许 markdown 中内嵌的 html 标签不被转义
+        // baseProcessor.use(remarkRehype, { allowDangerousHtml: true })
+        // // 关键修复: 确保 processor 有 Compiler (Stringify)，否则 .process() 会报错
+        // // 如果 baseProcessor 已经包含了 stringify，这一步可能多余，但加上通常无害(或覆盖)
+        // // 也可以检查 baseProcessor.Compiler 是否存在
+        // baseProcessor.use(rehypeStringify)        
+        // processor = baseProcessor
+        processor = unified()
+          .use(remarkParse)
+          .use(remarkGfm)
+          .use(remarkMath)
+          .use(remarkBreaks)
+          .use(remarkRehype, { allowDangerousHtml: true })
+          .use(rehypeStringify)
         if (!processor.compiler) {
           processor.compiler = (tree: unknown) => tree as any
         }
@@ -226,7 +233,6 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
             }
           })
 
-          console.log('----------------re render\n', markdown, 'path:', global_path, 'context:', result.value)
           el.innerHTML = result.value as string
         })
       }
