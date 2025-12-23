@@ -1,33 +1,38 @@
-import { Plugin } from "unified"
-import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
+// 1. quartz
 import { createMdProcessor, type QuartzMdProcessor } from "../../processors/parse"
+import { type QuartzTransformerPlugin } from "../types"
+import { type BuildCtx } from "../../util/ctx"
+import { type FilePath } from "../../util/path"
+
+// 2. unified
+import { type Plugin, type Processor, unified } from "unified"
+import remarkParse from "remark-parse"
+import remarkGfm from "remark-gfm"
 import remarkRehype from 'remark-rehype'
+import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
 import rehypeStringify from 'rehype-stringify'
 import { toMarkdown } from "mdast-util-to-markdown" // TODO 这里好像会有 document 依赖
   // 而且不一定能反序列化成功 (有私有节点类型，甚至table类型都不能识别)
   // 后期需要去除此 "修改树" 的 `transformer` / `mdast-util` 插件
   // 修改成 `micromarkExtensions` 形式的插件
+import { type VFile } from "vfile"
 
-import { type QuartzTransformerPlugin } from "../types"
-import { type BuildCtx } from "../../util/ctx"
-
-// AnyBlock
+// 3. AnyBlock
+// import deasync from 'deasync'
 import { ABReg } from "../../../../ABConverter/ABReg"
 import {
   ABConvertManager,
   jsdom_init,
   // transformer_anyblock as ab_1,
   remark_anyblock_render_codeblock,
- } from "@anyblock/remark-any-block"
-import { type FilePath } from "../../util/path"
+} from "@anyblock/remark-any-block"
 jsdom_init()
 
 /**
  * 大部分选项是为了与 markdown-it 版本保持一致而保留的。
  * 目前这些选项未被使用，但已预留用于未来的行为切换。
  */
-export interface AnyBlockOptions {
-}
+export interface AnyBlockOptions {}
 
 /**
  * 检测 `[header]` 段落
@@ -84,11 +89,12 @@ function nodesToMarkdown(nodes: RootContent[]): string {
   ).trimEnd();
 }
 
+/**
+ * remark 插件: 缓存当前处理文件的路径到全局变量 `global_path` 中
+ */
 const captureFileContext: Plugin<[], Root> = () => {
   return (_tree, file) => {
-    if (file.path) {
-      global_path = file.path
-    }
+    if (file.path) global_path = file.path
   }
 }
 
@@ -160,7 +166,7 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
   (tree as Root).children = out;
 }
 
-let processor: QuartzMdProcessor|'flag'|undefined
+let processor: QuartzMdProcessor|any|'flag'|undefined
 let global_path: string = ''
 
 // 这是 Quartz 的 Transformer 插件定义
@@ -187,19 +193,31 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
         // 也可以检查 baseProcessor.Compiler 是否存在
         baseProcessor.use(rehypeStringify)        
         processor = baseProcessor
+        processor = unified().use(remarkParse).use(remarkGfm).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeStringify) // or
         if (!processor.compiler) {
-          processor.compiler = (tree) => tree as any
+          processor.compiler = (tree: unknown) => tree as any
         }
 
-        ABConvertManager.getInstance().redefine_renderMarkdown(async (markdown: string, el: HTMLElement): Promise<void> => {
+        ABConvertManager.getInstance().redefine_renderMarkdown((markdown: string, el: HTMLElement): void => {
           if (processor === 'flag' || processor === undefined) return
-          console.log('----------------re render\n', markdown, 'path:', global_path)
-          // 3. 使用全功能 Processor 解析
-          // 关键点：processor.process 依然需要一个 path
+          // 使用全功能 Processor 解析
+          // 
+          // 路径问题:
+          // 关键点：processor.process / processor.processSync 依然需要一个 path
           // 即使文件不存在，通常也需要提供一个"逻辑路径"，
           // 这样如果内容里有相对链接 (如 [link](./other-note))，处理器才能正确计算链接。
           // 如果确定没有相对链接，可以用当前文件的路径 (file.path) 或一个假路径。
-          const result = await processor.process({
+          // 
+          // 异步问题:
+          // 这里复用的 createMdProcessor(ctx) 会包含异步操作
+          // 如果使用 processor.processSync 需要保证 processor 中的插件都是同步的，也就是说要重新构造 unified
+          // 且这个过程可能会丢失部分插件特性
+          // 初始渲染使用异步是对的，这样可以多个文件并行解析渲染处理。但对于同一个文件的多次渲染、嵌套渲染，只能同步
+          // 
+          // 返回值:
+          // result主要属性: cwd, data { filePath, slug, frontmatter, dates }, history, messages, value
+          //   其中 value 是最终的 HTML_string
+          const result: VFile = processor.processSync({
             value: markdown,
             path: global_path  || 'index.md', // 当前文件所在路径
             data: {
@@ -208,16 +226,15 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
             }
           })
 
-          // // result.result 是解析后的 AST (MDAST)
-          // const targetRoot = result.result as any
+          console.log('----------------re render\n', markdown, 'path:', global_path, 'context:', result.value)
+          el.innerHTML = result.value as string
         })
       }
 
       return [
-        captureFileContext, // 关键修复 3: 在处理链最前面添加捕获路径的插件
+        captureFileContext, // 在处理链最前面添加捕获路径的插件
         remark_anyblock_to_codeblock,
-        remark_anyblock_render_codeblock,
-        // remark_anyblock_render_codeblock, // last
+        remark_anyblock_render_codeblock, // last
         // ab_3(), // last
       ]
     },
