@@ -1,5 +1,8 @@
 import { Plugin } from "unified"
 import { Root, RootContent, Paragraph, Text, Code, Html } from "mdast"
+import { createMdProcessor, type QuartzMdProcessor } from "../../processors/parse"
+import remarkRehype from 'remark-rehype'
+import rehypeStringify from 'rehype-stringify'
 import { toMarkdown } from "mdast-util-to-markdown" // TODO 这里好像会有 document 依赖
   // 而且不一定能反序列化成功 (有私有节点类型，甚至table类型都不能识别)
   // 后期需要去除此 "修改树" 的 `transformer` / `mdast-util` 插件
@@ -11,11 +14,12 @@ import { type BuildCtx } from "../../util/ctx"
 // AnyBlock
 import { ABReg } from "../../../../ABConverter/ABReg"
 import {
-  // ABConvertManager,
+  ABConvertManager,
   jsdom_init,
   // transformer_anyblock as ab_1,
   remark_anyblock_render_codeblock,
  } from "@anyblock/remark-any-block"
+import { type FilePath } from "../../util/path"
 jsdom_init()
 
 /**
@@ -78,6 +82,14 @@ function nodesToMarkdown(nodes: RootContent[]): string {
     { type: "root", children: nodes } as unknown as Root,
     { listItemIndent: "one" }
   ).trimEnd();
+}
+
+const captureFileContext: Plugin<[], Root> = () => {
+  return (_tree, file) => {
+    if (file.path) {
+      global_path = file.path
+    }
+  }
 }
 
 /**
@@ -148,10 +160,8 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
   (tree as Root).children = out;
 }
 
-{
-  // ABConvertManager.getInstance().redefine_renderMarkdown((markdown: string, el: HTMLElement):void => {
-  // })
-}
+let processor: QuartzMdProcessor|'flag'|undefined
+let global_path: string = ''
 
 // 这是 Quartz 的 Transformer 插件定义
 // export const transformer_anyblock: QuartzTransformerPlugin = ab_1
@@ -159,8 +169,52 @@ export const transformer_anyblock: QuartzTransformerPlugin = (/*options: any*/) 
   return {
     name: "AnyBlock",
 
-    markdownPlugins(_ctx: BuildCtx) {
+    markdownPlugins(ctx: BuildCtx) { // 一般只初始化一次，但 createMdProcessor 也会重新触发之 (注意避免递归触发)
+
+      console.log('---------------- init transformer_anyblock', ctx.allFiles)
+      if (processor === undefined) {
+        // processor
+        processor = 'flag' // 要先给 'flag'，避免下一步递归
+        // 尝试复用 processor，复用已经配置好了的插件，避免插件效果丢失
+        // 但注意: 这里返回的只是 Markdown 阶段 的处理器（Remark 处理器），而非全流程的处理器
+        // 还需要手动给这个 processor 补全 后半截流程
+        const baseProcessor = createMdProcessor(ctx)
+        // 关键修复: 补全 "Markdown -> HTML" 的转换桥梁
+        // allowDangerousHtml: true 允许 markdown 中内嵌的 html 标签不被转义
+        baseProcessor.use(remarkRehype, { allowDangerousHtml: true })
+        // 关键修复: 确保 processor 有 Compiler (Stringify)，否则 .process() 会报错
+        // 如果 baseProcessor 已经包含了 stringify，这一步可能多余，但加上通常无害(或覆盖)
+        // 也可以检查 baseProcessor.Compiler 是否存在
+        baseProcessor.use(rehypeStringify)        
+        processor = baseProcessor
+        if (!processor.compiler) {
+          processor.compiler = (tree) => tree as any
+        }
+
+        ABConvertManager.getInstance().redefine_renderMarkdown(async (markdown: string, el: HTMLElement): Promise<void> => {
+          if (processor === 'flag' || processor === undefined) return
+          console.log('----------------re render\n', markdown, 'path:', global_path)
+          // 3. 使用全功能 Processor 解析
+          // 关键点：processor.process 依然需要一个 path
+          // 即使文件不存在，通常也需要提供一个"逻辑路径"，
+          // 这样如果内容里有相对链接 (如 [link](./other-note))，处理器才能正确计算链接。
+          // 如果确定没有相对链接，可以用当前文件的路径 (file.path) 或一个假路径。
+          const result = await processor.process({
+            value: markdown,
+            path: global_path  || 'index.md', // 当前文件所在路径
+            data: {
+              filePath: (global_path || 'index.md') as FilePath, // 关键修复: 显式设置 data.filePath，Quartz 插件通常依赖这个属性
+              slug: "temp-slug" as any
+            }
+          })
+
+          // // result.result 是解析后的 AST (MDAST)
+          // const targetRoot = result.result as any
+        })
+      }
+
       return [
+        captureFileContext, // 关键修复 3: 在处理链最前面添加捕获路径的插件
         remark_anyblock_to_codeblock,
         remark_anyblock_render_codeblock,
         // remark_anyblock_render_codeblock, // last
