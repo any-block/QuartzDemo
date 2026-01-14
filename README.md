@@ -2,16 +2,6 @@
 
 此项目测试于 Quartz 的 e6cc9ba3683897f899cd0b514ba9e54f72d0de8a 版本
 
-TODO
-
-- 删除一些不再使用的旧代码: 重渲染使用 markdown-it 的逻辑，不是很好
-  重渲染不支持使用插件，且渲染结果和原来的不够匹配
-  待研究替换
-- 范围选择器目前依赖了 toMarkdown，不是很好
-  一是document依赖问题导致一些工作不能在lib中进行
-  二是不一定反序列化成功 (如私有节点类型和table类型)
-  待研究替换
-
 当前不足
 
 > 目前主要是一个问题：
@@ -40,7 +30,7 @@ npx quartz create
 # Treat links as shortest path (default)
 ```
 
-1.2. 清空不必要的内容 (可选)
+1.1. 清空不必要的内容 (可选)
 
 > [!note]
 > 我认为文档中的做法比较原始和笨重，带来了很多不需要的历史包袱和文件。
@@ -63,7 +53,7 @@ npx quartz create
 echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 ```
 
-1. 安装使用AnyBlock **(开发中)**
+3. 安装使用AnyBlock **(开发中)**
 
 就像使用普通的 remark 插件那样使用
 
@@ -125,7 +115,7 @@ quartz/styles/custom.scss 添加:
 > 
 > 例如vitepress可以添加 [theme](https://github.com/any-block/VitePressDemo/blob/main/.vitepress/theme) 文件夹及里面的内容
 
-1. 检查
+4. 检查
 
 ```bash
 # 在clone的quartz项目所在路径下
