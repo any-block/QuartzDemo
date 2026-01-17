@@ -62,7 +62,7 @@ echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 ```bash
 npm install @anyblock/remark-any-block
 # 后续如果编译时发现有依赖丢失再补充 npm install
-# npm install markdown-it
+将该项目中的 `/plugins/transgormers/` 复制到 `/quartz/quartz/plugins/transgormers/`
 
 # 旧
 # npm install markdown-it-any-block@latest
