@@ -53,7 +53,7 @@ npx quartz create
 echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 ```
 
-3. 安装使用AnyBlock **(开发中)**
+3. 安装使用 AnyBlock 的 Remark 插件
 
 就像使用普通的 remark 插件那样使用
 
