@@ -122,7 +122,6 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
       const node_next = children[i+1];
       if (
         node_next.type === "list" ||
-        node_next.type === "heading" ||
         node_next.type === "code" ||
         node_next.type === "blockquote"
         // node_next.type === "table"
@@ -138,7 +137,38 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
       } else {}
     }
 
-    // step2. 检测 `:::` 语法
+    // step2. 检测头尾语法之 `[]` + heading 语法
+    if (header) {
+      const node_next = children[i+1];
+      if (
+        node_next.type === "heading"
+      ) {
+        const nodes: RootContent[] = [node_next];
+        const i_cache = i;
+        i = i + 2
+        for (; i < children.length; i++) { // 找结束标志
+          const node_next_j = children[i]
+          if (node_next_j.type == "heading" && node_next_j.depth < node_next.depth) {
+            break
+          }
+          if (!["mdxjsEsm"].includes(node_next_j.type)) nodes.push(node_next_j)
+        }
+        const codeValue = `[${header}]\n${nodesToMarkdown(nodes)}`;
+        out.push({
+          type: "code",
+          lang: "anyblock",
+          value: codeValue,
+          data: { markup: "[]" },
+        });
+        // TODO
+        // 部分环境 (Docusaurus不行，Quartz可以) 目前不能将标题给去掉，否则 toc 会报错: `can't access property "length", toc is undefined`
+        // 后面想想有没有什么办法能解决这个问题，感觉要预处理文档才行
+        i=i-1; continue;
+        // i=i_cache; continue;
+      } else {}
+    }
+
+    // step3. 检测 `:::` 语法
     const container = matchContainerStart(node);
     if (container) {
       const body: RootContent[] = [];
@@ -162,7 +192,7 @@ export const remark_anyblock_to_codeblock: Plugin<[Partial<AnyBlockOptions>?], R
       }
     }
 
-    // step3. 不处理的节点，保持不变
+    // step4. 不处理的节点，保持不变
     out.push(node)
   }
 

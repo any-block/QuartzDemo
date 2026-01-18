@@ -57,7 +57,7 @@ echo -e "\n[list2table]\n\n- 1\n- 2\n  - 3\n  - 4\n" >> ./content/index.md
 
 就像使用普通的 remark 插件那样使用
 
-3.1. 安装依赖 (临时, 后续会有 remark 版本的 any-block 包)
+3.1. 安装依赖
 
 ```bash
 npm install @anyblock/remark-any-block
@@ -77,7 +77,7 @@ quartz.config.ts
 
 ```js
 // import { RocketHeading } from "./quartz/plugins/transformers/rocketHeading" // [!code ++]
-import { transformer_anyblock } from "./quartz/plugins/transformers/anyblock"
+import { transformer_anyblock } from "./quartz/plugins/transformers/anyblock" // [!code ++]
 
 const config: QuartzConfig = {
   plugins: {
